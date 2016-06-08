@@ -93,7 +93,6 @@ func main() {
 		tokens := strings.SplitN(line, ":", 2)
 
 		if len(tokens) != 2 {
-			fmt.Println(line)
 			continue
 		}
 
@@ -114,10 +113,7 @@ func main() {
 					tmuxNewWindow(*session, name)
 					windowsCounter = windowsCounter + 1
 				}
-
-				if len(lines)-(windowsCounter*4)-1 > 1 {
-					CreateFourSplits(*session, windowsCounter+1)
-				}
+				CreateFourSplits(*session, windowsCounter+1)
 			}
 			tmuxSendKeys(*session, windowsCounter+1, splitsCounter, command)
 			splitsCounter = splitsCounter + 1
