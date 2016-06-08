@@ -50,9 +50,28 @@ func tmuxSendKeys(session string, window int, pane int, command string) {
 	shellOut(fmt.Sprintf("tmux send-keys -t %s:%d.%d '%s' Enter", session, window, pane, command), true)
 }
 
+func tmuxSplitWindow(session string, window int, pane int, vertically bool) {
+	splitKey := "h"
+	if vertically {
+		splitKey = "v"
+	}
+	shellOut(fmt.Sprintf("tmux split-window -t %s:%d.%d -%s", session, window, pane, splitKey), true)
+}
+
+func tmuxRenameWindow(session string, window int, newName string) {
+	shellOut(fmt.Sprintf("tmux rename-window -t %s:%d %s", session, window, newName), true)
+}
+
+func CreateFourSplits(session string, window int) {
+	tmuxSplitWindow(session, window, 0, false)
+	tmuxSplitWindow(session, window, 0, true)
+	tmuxSplitWindow(session, window, 1, true)
+}
+
 func main() {
 	var procfile = flag.String("file", "Procfile", "procfile location")
 	var session = flag.String("session", "tmuxman", "tmux session name to use")
+	var useSplits = flag.Bool("splits", false, "use splits (max 4 splits per window)")
 
 	flag.Parse()
 
@@ -65,6 +84,9 @@ func main() {
 	tmuxKillSession(*session)
 	tmuxNewSession(*session)
 
+	splitsCounter := 0
+	windowsCounter := 0
+
 	for i, line := range strings.Split(string(content), "\n") {
 		tokens := strings.SplitN(line, ":", 2)
 
@@ -75,10 +97,31 @@ func main() {
 		name, command := strings.TrimSpace(tokens[0]), strings.TrimSpace(tokens[1])
 		fmt.Printf("%s -> %s \n", name, command)
 
-		if i > 0 {
-			tmuxNewWindow(*session, name)
+		if i == 0 {
+			tmuxRenameWindow(*session, 1, name)
 		}
-		tmuxSendKeys(*session, i+1, 0, command)
+
+		if splitsCounter == 4 {
+			splitsCounter = 0
+		}
+
+		if *useSplits {
+			if splitsCounter == 0 {
+				if i > 0 {
+					tmuxNewWindow(*session, name)
+					windowsCounter = windowsCounter + 1
+				}
+				CreateFourSplits(*session, windowsCounter+1)
+			}
+			tmuxSendKeys(*session, windowsCounter+1, splitsCounter, command)
+			splitsCounter = splitsCounter + 1
+		} else {
+			if i > 0 {
+				tmuxNewWindow(*session, name)
+				windowsCounter = windowsCounter + 1
+			}
+			tmuxSendKeys(*session, windowsCounter+1, splitsCounter, command)
+		}
 	}
 
 	tmuxAttach(*session)
